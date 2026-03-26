@@ -10,12 +10,13 @@ city = st.text_input("Enter City / Area", "Chennai")
 if city:
 
     try:
-        # ---------------- GEO LOCATION ----------------
-        geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1"
+        # ---------------- GEO LOCATION (IMPROVED) ----------------
+        geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=5"
         geo_response = requests.get(geo_url).json()
 
-        if "results" in geo_response:
+        if "results" in geo_response and len(geo_response["results"]) > 0:
 
+            # 🔥 Take best match (first result but safer now)
             result = geo_response["results"][0]
 
             lat = result["latitude"]
@@ -34,22 +35,25 @@ if city:
             with col1:
                 st.subheader("📍 Live Map")
 
-                df = pd.DataFrame({"lat": [lat], "lon": [lon]})
+                df = pd.DataFrame({
+                    "lat": [lat],
+                    "lon": [lon]
+                })
 
                 st.pydeck_chart(pdk.Deck(
                     map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
                     initial_view_state=pdk.ViewState(
                         latitude=lat,
                         longitude=lon,
-                        zoom=11
+                        zoom=10
                     ),
                     layers=[
                         pdk.Layer(
                             "ScatterplotLayer",
                             data=df,
                             get_position='[lon, lat]',
-                            get_color='[0, 0, 255, 200]',
-                            get_radius=500,
+                            get_color='[0, 120, 255, 220]',
+                            get_radius=600,
                         )
                     ]
                 ))
@@ -58,16 +62,16 @@ if city:
             with col2:
                 st.subheader("🌦️ Weather Info")
 
-                st.write(f"📍 {location}, {country}")
-                st.write(f"🌐 Lat: {lat}")
-                st.write(f"🌐 Lon: {lon}")
+                st.write(f"📍 **{location}, {country}**")
+                st.write(f"🌐 Latitude: {lat}")
+                st.write(f"🌐 Longitude: {lon}")
 
-                st.metric("🌡️ Temp", f"{weather['temperature']} °C")
-                st.metric("🌬️ Wind", f"{weather['windspeed']} km/h")
-                st.metric("🧭 Direction", f"{weather['winddirection']}°")
+                st.metric("🌡️ Temperature", f"{weather['temperature']} °C")
+                st.metric("🌬️ Wind Speed", f"{weather['windspeed']} km/h")
+                st.metric("🧭 Wind Direction", f"{weather['winddirection']}°")
 
         else:
-            st.warning("Location not found")
+            st.warning("❌ Location not found. Try another name.")
 
     except Exception as e:
         st.error(f"Error: {e}")
