@@ -1,10 +1,10 @@
 import streamlit as st
 import requests
 import time
-import pydeck as pdk
-import pandas as pd
+import folium
+from streamlit_folium import st_folium
 
-st.title("🌦️ Live Weather Dashboard with Map")
+st.title("🌦️ Live Weather Dashboard")
 
 city = st.text_input("Enter City / Area", "Chennai")
 
@@ -23,48 +23,37 @@ while True:
                 lat = result["latitude"]
                 lon = result["longitude"]
                 location = result["name"]
-                country = result.get("country", "Unknown")
+                country = result.get("country", "")
 
                 # ---------------- WEATHER ----------------
                 weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
                 weather_data = requests.get(weather_url).json()
                 weather = weather_data["current_weather"]
 
-                # ---------------- UI ----------------
                 with placeholder.container():
 
                     col1, col2 = st.columns([2, 1])
 
-                    # MAP
+                    # ---------------- MAP ----------------
                     with col1:
-                        st.subheader("📍 Live Location Map")
+                        st.subheader("🗺️ Live Map View")
 
-                        df = pd.DataFrame({
-                            "lat": [lat],
-                            "lon": [lon]
-                        })
+                        m = folium.Map(
+                            location=[lat, lon],
+                            zoom_start=10,
+                            tiles="OpenStreetMap"
+                        )
 
-                        st.pydeck_chart(pdk.Deck(
-                            map_style="mapbox://styles/mapbox/streets-v11",
-                            initial_view_state=pdk.ViewState(
-                                latitude=lat,
-                                longitude=lon,
-                                zoom=10,
-                                pitch=0
-                            ),
-                            layers=[
-                                pdk.Layer(
-                                    "ScatterplotLayer",
-                                    data=df,
-                                    get_position='[lon, lat]',
-                                    get_color='[255, 0, 0, 200]',
-                                    get_radius=300,
-                                )
-                            ],
-                            tooltip={"text": f"{location}\nLat: {lat}\nLon: {lon}"}
-                        ))
+                        folium.Marker(
+                            [lat, lon],
+                            popup=f"{location}, {country}",
+                            tooltip="Click for details",
+                            icon=folium.Icon(color="red", icon="info-sign")
+                        ).add_to(m)
 
-                    # DETAILS PANEL
+                        st_folium(m, width=700, height=450)
+
+                    # ---------------- DETAILS ----------------
                     with col2:
                         st.subheader("🌦️ Weather Details")
 
@@ -76,7 +65,7 @@ while True:
                         st.metric("🌬️ Wind Speed", f"{weather['windspeed']} km/h")
                         st.metric("🧭 Wind Direction", f"{weather['winddirection']}°")
 
-                        st.caption("🔄 Auto-refresh every 10 seconds")
+                        st.caption("🔄 Auto refresh every 10 seconds")
 
             else:
                 st.warning("Location not found")
