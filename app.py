@@ -3,7 +3,7 @@ import requests
 
 st.title("🌦️ Weather Dashboard")
 
-API_KEY = st.secrets("7e9c04257efca0ae3b5a708436f6403a")
+API_KEY = st.secrets["7e9c04257efca0ae3b5a708436f6403a"]
 
 city = st.text_input("Enter City Name", "Chennai")
 
