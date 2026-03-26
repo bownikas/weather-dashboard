@@ -1,9 +1,10 @@
 import streamlit as st
 import requests
 import time
+import pydeck as pdk
 import pandas as pd
 
-st.title("🌦️ Live Weather Dashboard")
+st.title("🌦️ Live Weather Dashboard with Map")
 
 city = st.text_input("Enter City / Area", "Chennai")
 
@@ -18,9 +19,11 @@ while True:
 
             if "results" in geo_response:
                 result = geo_response["results"][0]
+
                 lat = result["latitude"]
                 lon = result["longitude"]
                 location = result["name"]
+                country = result.get("country", "Unknown")
 
                 # ---------------- WEATHER ----------------
                 weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
@@ -32,30 +35,53 @@ while True:
 
                     col1, col2 = st.columns([2, 1])
 
-                    # LEFT SIDE → MAP
+                    # MAP
                     with col1:
-                        st.subheader("📍 Location Map")
+                        st.subheader("📍 Live Location Map")
 
-                        map_df = pd.DataFrame({
+                        df = pd.DataFrame({
                             "lat": [lat],
                             "lon": [lon]
                         })
 
-                        st.map(map_df, zoom=10)
+                        st.pydeck_chart(pdk.Deck(
+                            map_style="mapbox://styles/mapbox/streets-v11",
+                            initial_view_state=pdk.ViewState(
+                                latitude=lat,
+                                longitude=lon,
+                                zoom=10,
+                                pitch=0
+                            ),
+                            layers=[
+                                pdk.Layer(
+                                    "ScatterplotLayer",
+                                    data=df,
+                                    get_position='[lon, lat]',
+                                    get_color='[255, 0, 0, 200]',
+                                    get_radius=300,
+                                )
+                            ],
+                            tooltip={"text": f"{location}\nLat: {lat}\nLon: {lon}"}
+                        ))
 
-                    # RIGHT SIDE → WEATHER DETAILS
+                    # DETAILS PANEL
                     with col2:
-                        st.subheader(f"🌦️ {location}")
+                        st.subheader("🌦️ Weather Details")
+
+                        st.write(f"📍 **Location:** {location}, {country}")
+                        st.write(f"🌐 **Latitude:** {lat}")
+                        st.write(f"🌐 **Longitude:** {lon}")
+
                         st.metric("🌡️ Temperature", f"{weather['temperature']} °C")
                         st.metric("🌬️ Wind Speed", f"{weather['windspeed']} km/h")
                         st.metric("🧭 Wind Direction", f"{weather['winddirection']}°")
 
-                        st.caption("🔄 Auto refreshes every 10 seconds")
+                        st.caption("🔄 Auto-refresh every 10 seconds")
 
             else:
-                st.warning("No location found")
+                st.warning("Location not found")
 
         except Exception as e:
-            st.error(f"Error fetching data: {e}")
+            st.error(f"Error: {e}")
 
     time.sleep(10)
