@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import time
+import pandas as pd
 
 st.title("🌦️ Live Weather Dashboard")
 
@@ -11,6 +12,7 @@ placeholder = st.empty()
 while True:
     if city.strip() != "":
         try:
+            # ---------------- GEO LOCATION ----------------
             geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1"
             geo_response = requests.get(geo_url).json()
 
@@ -20,18 +22,40 @@ while True:
                 lon = result["longitude"]
                 location = result["name"]
 
+                # ---------------- WEATHER ----------------
                 weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
                 weather_data = requests.get(weather_url).json()
-
                 weather = weather_data["current_weather"]
 
+                # ---------------- UI ----------------
                 with placeholder.container():
-                    st.success(f"Live Weather in {location}")
-                    st.write(f"🌡️ Temp: {weather['temperature']} °C")
-                    st.write(f"🌬️ Wind: {weather['windspeed']} km/h")
-                    st.write(f"🧭 Direction: {weather['winddirection']}°")
 
-        except:
-            st.error("Error fetching data")
+                    col1, col2 = st.columns([2, 1])
 
-    time.sleep(10)  # refresh every 10 seconds
+                    # LEFT SIDE → MAP
+                    with col1:
+                        st.subheader("📍 Location Map")
+
+                        map_df = pd.DataFrame({
+                            "lat": [lat],
+                            "lon": [lon]
+                        })
+
+                        st.map(map_df, zoom=10)
+
+                    # RIGHT SIDE → WEATHER DETAILS
+                    with col2:
+                        st.subheader(f"🌦️ {location}")
+                        st.metric("🌡️ Temperature", f"{weather['temperature']} °C")
+                        st.metric("🌬️ Wind Speed", f"{weather['windspeed']} km/h")
+                        st.metric("🧭 Wind Direction", f"{weather['winddirection']}°")
+
+                        st.caption("🔄 Auto refreshes every 10 seconds")
+
+            else:
+                st.warning("No location found")
+
+        except Exception as e:
+            st.error(f"Error fetching data: {e}")
+
+    time.sleep(10)
