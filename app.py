@@ -1,12 +1,13 @@
 import streamlit as st
 import requests
+import pydeck as pdk
 import pandas as pd
 
-st.title("🌦️ Live Weather Dashboard")
+st.title("🌦️ Live Weather Dashboard with Map")
 
 city = st.text_input("Enter City / Area", "Chennai")
 
-if city:
+if city.strip() != "":
 
     try:
         # ---------------- GEO LOCATION ----------------
@@ -20,41 +21,64 @@ if city:
             lat = result["latitude"]
             lon = result["longitude"]
             location = result["name"]
-            country = result.get("country", "")
+            country = result.get("country", "Unknown")
 
             # ---------------- WEATHER ----------------
             weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
             weather_data = requests.get(weather_url).json()
             weather = weather_data["current_weather"]
 
-            # ---------------- UI ----------------
+            # ---------------- LAYOUT ----------------
             col1, col2 = st.columns([2, 1])
 
-            # MAP
+            # ---------------- MAP (FIXED) ----------------
             with col1:
                 st.subheader("📍 Live Location Map")
 
-                map_data = pd.DataFrame({
+                df = pd.DataFrame({
                     "lat": [lat],
                     "lon": [lon]
                 })
 
-                st.map(map_data, zoom=10)
+                st.pydeck_chart(pdk.Deck(
+                    map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+                    
+                    initial_view_state=pdk.ViewState(
+                        latitude=lat,
+                        longitude=lon,
+                        zoom=11,
+                        pitch=0
+                    ),
 
-            # DETAILS
+                    layers=[
+                        pdk.Layer(
+                            "ScatterplotLayer",
+                            data=df,
+                            get_position='[lon, lat]',
+                            get_color='[255, 0, 0, 200]',
+                            get_radius=400,
+                        )
+                    ],
+
+                    tooltip={
+                        "text": f"📍 {location}\n🌐 Lat: {lat}\n🌐 Lon: {lon}"
+                    }
+                ))
+
+            # ---------------- WEATHER DETAILS ----------------
             with col2:
-                st.subheader("🌦️ Weather Info")
+                st.subheader("🌦️ Weather Details")
 
-                st.write(f"📍 **{location}, {country}**")
-                st.write(f"🌐 Latitude: {lat}")
-                st.write(f"🌐 Longitude: {lon}")
+                st.write(f"📍 **Location:** {location}, {country}")
+                st.write(f"🌐 **Latitude:** {lat}")
+                st.write(f"🌐 **Longitude:** {lon}")
 
                 st.metric("🌡️ Temperature", f"{weather['temperature']} °C")
                 st.metric("🌬️ Wind Speed", f"{weather['windspeed']} km/h")
                 st.metric("🧭 Wind Direction", f"{weather['winddirection']}°")
 
         else:
-            st.warning("Location not found")
+            st.warning("❌ Location not found")
 
     except Exception as e:
         st.error(f"Error: {e}")
