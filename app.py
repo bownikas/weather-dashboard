@@ -1,87 +1,73 @@
 import streamlit as st
 import requests
-import time
-import pydeck as pdk
 import pandas as pd
+import pydeck as pdk
 
-st.title("🌦️ Live Weather Dashboard with Map")
+st.title("🌦️ Live Weather Dashboard")
 
 city = st.text_input("Enter City / Area", "Chennai")
 
-placeholder = st.empty()
+if city:
 
-while True:
-    if city.strip() != "":
-        try:
-            # ---------------- GEO LOCATION ----------------
-            geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1"
-            geo_response = requests.get(geo_url).json()
+    try:
+        # ---------------- GEO LOCATION ----------------
+        geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1"
+        geo_response = requests.get(geo_url).json()
 
-            if "results" in geo_response:
-                result = geo_response["results"][0]
+        if "results" in geo_response:
 
-                lat = result["latitude"]
-                lon = result["longitude"]
-                location = result["name"]
-                country = result.get("country", "Unknown")
+            result = geo_response["results"][0]
 
-                # ---------------- WEATHER ----------------
-                weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
-                weather_data = requests.get(weather_url).json()
-                weather = weather_data["current_weather"]
+            lat = result["latitude"]
+            lon = result["longitude"]
+            location = result["name"]
+            country = result.get("country", "Unknown")
 
-                # ---------------- UI ----------------
-                with placeholder.container():
+            # ---------------- WEATHER ----------------
+            weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
+            weather_data = requests.get(weather_url).json()
+            weather = weather_data["current_weather"]
 
-                    col1, col2 = st.columns([2, 1])
+            col1, col2 = st.columns([2, 1])
 
-                    # MAP
-                    with col1:
-                        st.subheader("📍 Live Location Map")
+            # ---------------- MAP ----------------
+            with col1:
+                st.subheader("📍 Live Map")
 
-                        df = pd.DataFrame({
-                            "lat": [lat],
-                            "lon": [lon]
-                        })
+                df = pd.DataFrame({"lat": [lat], "lon": [lon]})
 
-                        st.pydeck_chart(pdk.Deck(
-                            map_style="mapbox://styles/mapbox/streets-v11",
-                            initial_view_state=pdk.ViewState(
-                                latitude=lat,
-                                longitude=lon,
-                                zoom=10,
-                                pitch=0
-                            ),
-                            layers=[
-                                pdk.Layer(
-                                    "ScatterplotLayer",
-                                    data=df,
-                                    get_position='[lon, lat]',
-                                    get_color='[255, 0, 0, 200]',
-                                    get_radius=300,
-                                )
-                            ],
-                            tooltip={"text": f"{location}\nLat: {lat}\nLon: {lon}"}
-                        ))
+                st.pydeck_chart(pdk.Deck(
+                    map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+                    initial_view_state=pdk.ViewState(
+                        latitude=lat,
+                        longitude=lon,
+                        zoom=11
+                    ),
+                    layers=[
+                        pdk.Layer(
+                            "ScatterplotLayer",
+                            data=df,
+                            get_position='[lon, lat]',
+                            get_color='[0, 0, 255, 200]',
+                            get_radius=500,
+                        )
+                    ]
+                ))
 
-                    # DETAILS PANEL
-                    with col2:
-                        st.subheader("🌦️ Weather Details")
+            # ---------------- DETAILS ----------------
+            with col2:
+                st.subheader("🌦️ Weather Info")
 
-                        st.write(f"📍 **Location:** {location}, {country}")
-                        st.write(f"🌐 **Latitude:** {lat}")
-                        st.write(f"🌐 **Longitude:** {lon}")
+                st.write(f"📍 {location}, {country}")
+                st.write(f"🌐 Lat: {lat}")
+                st.write(f"🌐 Lon: {lon}")
 
-                        st.metric("🌡️ Temperature", f"{weather['temperature']} °C")
-                        st.metric("🌬️ Wind Speed", f"{weather['windspeed']} km/h")
-                        st.metric("🧭 Wind Direction", f"{weather['winddirection']}°")
+                st.metric("🌡️ Temp", f"{weather['temperature']} °C")
+                st.metric("🌬️ Wind", f"{weather['windspeed']} km/h")
+                st.metric("🧭 Direction", f"{weather['winddirection']}°")
 
-                        st.caption("🔄 Auto-refresh every 10 seconds")
+        else:
+            st.warning("Location not found")
 
-            else:
-                st.warning("Location not found")
-
-        except Exception as e:
-            st.error(f"Error: {e}")
-
-    time.sleep(10)
+    except Exception as e:
+        st.error(f"Error: {e}")
